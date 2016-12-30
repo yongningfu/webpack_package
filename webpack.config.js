@@ -38,15 +38,15 @@ module.exports = {
 	plugins: [
 		new ExtractTextPlugin('[name].[chunkhash].css'),
 
-		new webpack.optimize.CommonsChunkPlugin('common'), //提取所有入口的公共资源,
-                                                       //新的定义为common入口
+		new webpack.optimize.CommonsChunkPlugin('common.js'), //提取所有入口的公共资源,
+                                                       //新的定义为common.js入口
 		/**
 		 * 把chunks入口文件的资源导出到html中
 		 * 资源可能是 css 或者 js等
 		 * css的话 使用配合ExtractTextPlugin使用
 		 */
 		new HtmlWebpackPlugin({
-			chunks: ['index', 'index2', 'common'], //放入口文件的key即可 因为每个key对应一个输出对象js
+			chunks: ['index', 'index2', 'common.js'], //放入口文件的key即可 因为每个key对应一个输出对象js
 			                             // 这样配置话，会把index index2连个入口的输出js css都打包进html
 			                             // 再提醒一下 每个入口对应的 js css都会插入进html哦
 			                             // 必须还加入入口公共入口的部分 common 它会自动把它对应的 js css加入html

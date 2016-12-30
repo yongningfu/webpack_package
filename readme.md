@@ -34,7 +34,10 @@ entry.js引用 util1.js util2.js， 同时util1.js又引用了util2.js
 就是说，对于同一个资源,就算是require多次的话，它的id也是一样的，所以无论在多少个文件中
 require，它都只会打包一分
 
+对于和上面一致拓扑图，打包后的js代码为
 ![](./image/img2.gif)
+
+>注:  ```/* 1 */``` 代码打包模块为 id 为 1
 
 通过上面的图片我们看到，
 - entry.js 入口文件对应的id为 1
@@ -184,3 +187,7 @@ webpackJsonp([1],{
 /***/ }
 /******/ ]);
 ```
+
+可以简单， util2.js 的定义， 还有看到 ```/* 4 * /``` 的注释 了吗，比较熟悉吧，之前讨论过的
+```removed by extract-text-webpack-plugin``` 其实就是公共的 css 被 extract-text-webpack-plugin 给移动到外面
+的css文件中去了
