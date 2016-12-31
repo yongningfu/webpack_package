@@ -14,6 +14,8 @@ webpackJsonp([1],{
 	var util2 = __webpack_require__(3)
 	var css1 = __webpack_require__(4)
 
+	setTimeout(function() {console.log(util2.name), 2000})
+
 
 /***/ }
 

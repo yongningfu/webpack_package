@@ -136,7 +136,48 @@ HtmlWebpackPlugin 中 就能体现出来，可以它的 chunks中 加入 common 
 我们可以大概对 common.js  index.xxxxx.js(entry.js对应的代码) index2.xxxx.js(entry2.js对应的代码)
  打包出来的代码分析一下
 
-在 index.xxxx.js中，有如下代码
+**提前知识:**
+
+webpack的id 有两种 一种为 chunkid 一种为moduleId
+
+- 每个chunkid 对应的是一个js文件
+- 每个moduleid对应的是一个个js文件的内容的模块（一个js文件里面可以require多个资源，每
+个资源分配一个moduleid）
+
+为何要出来一个chunkid呢？ 这个chunkid的作用就是，标记这个js文件是否已经加载过了
+
+```js
+/******/ 	// object to store loaded and loading chunks
+/******/ 	// "0" means "already loaded"
+/******/ 	// Array means "loading", array contains callbacks
+/******/ 	var installedChunks = {
+/******/ 		2:0
+/******/ 	};
+```
+
+installedChunks 是记录一个chunkid是否已经加载过了
+
+
+我们先从 common.js分析
+
+common.js是公共分离出来的模块，所以按理来说，它应该是一个顶层的模块，实际上，确实如此
+
+看 common.js代码
+```js
+/******/ (function(modules) { // webpackBootstrap
+/******/ 	// install a JSONP callback for chunk loading
+
+
+/******/ 	var parentJsonpFunction = window["webpackJsonp"];
+/******/ 	window["webpackJsonp"] = function webpackJsonpCallback(chunkIds, moreModules) {
+/******/ 		// add "moreModules" to the modules object,
+/******/ 		// then flag all "chunkIds" as loaded and fire callback
+```
+
+定义了一个 webpackJsonp 函数
+
+
+看 index.xxxx.js代码
 
 ```js
 webpackJsonp([0],[
@@ -145,10 +186,19 @@ webpackJsonp([0],[
 
 	module.exports = __webpack_require__(1);
 
-
 /***/ },
 ```
-意思就是， index.xxx.js依赖外面 id 为 0 的模块
+使用 common.js中定义的函数 webpackJsonp， **所以在浏览器中加载的话，必须先加载 common.js**
+
+这个 webpackJsonp([0],[]) 第一个参数 [0] 是什么意思呢？  它就是 chunkid ,我们知道一个chunkid
+id对应一个 js 文件，它对应的js文件就是它的入口文件 entry.js， 那为何这里还要是一个数组
+
+因为一个入口文件的话，可以依赖多个js文件，其他的 id 就是它所依赖的， 其实就是配置webpack的时候
+
+那个入口js对应的 数组
+
+```index: ['./src/js/entry.js'],```   [0] 和 现在的id数组一一对应
+
 
 在 index2.xxx.js中，
 
@@ -162,13 +212,68 @@ webpackJsonp([1],{
 	module.exports = __webpack_require__(8);
 ```
 
-意思就是， index2.xxx.js依赖 id 为 1 的模块
+[1] 就是  webpack.config配置的数组 js 对应的 thunkid
 
-那么问题又来了，谁是 id 为 0  id 为 1的模块呢
+```index2: ['./src/js/entry2.js']```
 
-其实当然就是 common.js 中的模块了了, 而且 0 和 1 都是 util2.js, 如下代码
+即 entry2.js 就是 thunkid 1
 
+
+上面说完了thunkid, 下面就说 moduleid了， common.js为顶层js文件，通过调用webpackJsonp
+对其他文件进行处理，
+
+common.js中
 ```js
+/******/ 	var parentJsonpFunction = window["webpackJsonp"];
+/******/ 	window["webpackJsonp"] = function webpackJsonpCallback(chunkIds, moreModules) {
+/******/ 		// add "moreModules" to the modules object,
+/******/ 		// then flag all "chunkIds" as loaded and fire callback
+
+/******/ 		for(moduleId in moreModules) {
+
+/******/ 			modules[moduleId] = moreModules[moduleId];
+/******/ 		}
+```
+
+```webpackJsonpCallback(chunkIds, moreModules)```定义为 chunkIds, moreModules，chunkIds 说了，
+就是入口文件对应的 js 文件的 thunkid, 那么这个moreModules是什么呢？ 就是一个js文件中，一个个依赖的
+和 导出本身的 module
+
+可以看index2.xxxx.js
+```js
+
+webpackJsonp([1],{
+
+/***/ 0:
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = __webpack_require__(8);
+
+
+/***/ },
+
+/***/ 8:
+/***/ function(module, exports, __webpack_require__) {
+
+	var util2 = __webpack_require__(3)
+	var css1 = __webpack_require__(4)
+
+
+/***/ }
+
+});
+```
+
+这里 moreModules 为一个对象，key 为 moduleid, value 就是一个个 module定义
+
+比如 ```function(module, exports, __webpack_require__) { module.exports = __webpack_require__(8);}```
+
+
+最重要的来了， 这里的话， utils2 是公共的module，它被定义在commong.js中，
+
+common.js
+```js
+
 /* 0 */,
 /* 1 */,
 /* 2 */,
@@ -180,14 +285,34 @@ webpackJsonp([1],{
 
 /***/ },
 /* 4 */
-/***/ function(module, exports) {
-
-	// removed by extract-text-webpack-plugin
-
-/***/ }
-/******/ ]);
 ```
 
-可以简单， util2.js 的定义， 还有看到 ```/* 4 * /``` 的注释 了吗，比较熟悉吧，之前讨论过的
-```removed by extract-text-webpack-plugin``` 其实就是公共的 css 被 extract-text-webpack-plugin 给移动到外面
-的css文件中去了
+可以看到， index.xxx.js 的 调用 和 index2.xxx.js的调用都是一样的，都是下面这句
+
+```var util2 = __webpack_require__(3)```
+
+它会寻找 moduleid 为3的模块，然后返回
+
+
+如何寻找呢 看看 __webpack_require__ 定义
+
+```js
+/******/ 	function __webpack_require__(moduleId) {
+
+/******/ 		// Check if module is in cache
+/******/ 		if(installedModules[moduleId])
+/******/ 			return installedModules[moduleId].exports;
+
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = installedModules[moduleId] = {
+/******/ 			exports: {},
+/******/ 			id: moduleId,
+/******/ 			loaded: false
+/******/ 		};
+```
+
+**if(installedModules[moduleId])**  如果缓存中存在的话，就直接返回。
+
+由于 index.xxx.js 和 index2.xxx.js都是返回的同一个 id 的模块，所以实际上 **它们使用的是同一个对象**
+
+这和nodejs里面的require是一样的，所以整个项目中，**require公共模块中的资源的话，实际返回的都是同一个对象**

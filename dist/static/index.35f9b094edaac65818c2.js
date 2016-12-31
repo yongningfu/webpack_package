@@ -14,6 +14,8 @@ webpackJsonp([0],[
 	var css1 = __webpack_require__(4)
 	// var css2 = require('../less/style2.less')
 
+	util2.name = "entry modify"
+
 
 /***/ },
 /* 2 */
